@@ -25,7 +25,7 @@ type ToolContext = {
   }) => Promise<void>
 }
 
-const BASE_URL = normalizeBackend(process.env.SABY_BACKEND_URL ?? "http://localhost:4000")
+const BASE_URL = normalizeBackend(process.env.SABY_BACKEND_URL ?? "https://api.saby.ai")
 
 // Accept "https://api.saby.ai", trailing "/", or trailing "/v1"; the client
 // appends /v1/... itself.

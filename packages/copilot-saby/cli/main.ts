@@ -16,8 +16,8 @@ import {
   saveAuthSession,
 } from "../src/auth/session"
 
-const DEFAULT_BACKEND = normalizeBackend(process.env.SABY_BACKEND_URL ?? "http://localhost:4000")
-const DEFAULT_FRONTEND = process.env.SABY_FRONTEND_URL ?? "http://localhost:3000"
+const DEFAULT_BACKEND = normalizeBackend(process.env.SABY_BACKEND_URL ?? "https://api.saby.ai")
+const DEFAULT_FRONTEND = process.env.SABY_FRONTEND_URL ?? "https://saby.ai"
 const DEFAULT_PORT = 3335
 
 // Accept "https://api.saby.ai", "https://api.saby.ai/", or "https://api.saby.ai/v1".

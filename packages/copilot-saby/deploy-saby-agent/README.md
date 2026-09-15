@@ -54,8 +54,8 @@ persists the backend URL so every session is ready.
 
 | Var                | Purpose                                                      | Default            |
 | ------------------ | ----------------------------------------------------------- | ------------------ |
-| `SABY_BACKEND_URL` | Governed Saby backend REST API (`/v1/copilot/*`)            | `http://localhost:4000` |
-| `SABY_FRONTEND_URL`| Web app used for login                                       | `http://localhost:3000` |
+| `SABY_BACKEND_URL` | Governed Saby backend REST API (`/v1/copilot/*`)            | `https://api.saby.ai` |
+| `SABY_FRONTEND_URL`| Web app used for login                                       | `https://saby.ai` |
 | `SABY_HOME`        | Where the CLI stores `auth.json` + `env`                     | `~/.saby`           |
 | `SABY_BUNDLE_DIR`  | Bundle root (auto-detected when launcher stays in `bin/`)    | –                  |
 | `SABY_OPENCODE_CMD`| Override the `opencode-saby` binary path                     | –                  |
