@@ -10,6 +10,7 @@ export interface Context {
   readonly sessionID: SessionSchema.ID
   readonly agent: AgentV2.ID
   readonly assistantMessageID: SessionMessage.ID
+  readonly metadata?: SessionSchema.Metadata
   readonly toolCallID: string
 }
 

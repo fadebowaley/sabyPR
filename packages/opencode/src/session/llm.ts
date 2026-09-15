@@ -45,6 +45,9 @@ export type StreamInput = {
   tools: Record<string, Tool>
   retries?: number
   toolChoice?: "auto" | "required" | "none"
+  // Runtime-only model auth override. Read from session metadata (BYOK); the
+  // vanilla CLI path never sets it, so default provider auth is unchanged.
+  authOverride?: { apiKey: string; baseURL?: string }
 }
 
 export type StreamRequest = StreamInput & {
@@ -110,6 +113,7 @@ const live: Layer.Layer<
         plugin,
         flags,
         isWorkflow,
+        authOverride: input.authOverride,
       })
 
       // Wire up toolExecutor for DWS workflow models so that tool calls

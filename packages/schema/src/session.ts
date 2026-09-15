@@ -15,6 +15,10 @@ export type ID = SessionID
 
 export const Event = SessionEvent
 
+export const SessionMetadata = Schema.Record(Schema.String, Schema.Unknown).annotate({
+  identifier: "SessionV2.Metadata",
+})
+
 export interface Info extends Schema.Schema.Type<typeof Info> {}
 export const Info = Schema.Struct({
   id: ID,
@@ -41,6 +45,7 @@ export const Info = Schema.Struct({
   location: Location.Ref,
   subpath: RelativePath.pipe(optional),
   revert: Revert.State.pipe(optional),
+  metadata: SessionMetadata.pipe(optional),
 }).annotate({ identifier: "SessionV2.Info" })
 
 export const ListAnchor = Schema.Struct({

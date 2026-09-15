@@ -1,0 +1,38 @@
+# saby-agent engine container — runs alongside the backend on the saby-prod
+# edge network. Loopback-only publish (127.0.0.1:3456) for config/testing;
+# the backend reaches it via Docker DNS as http://saby-agent:3456.
+#
+# Required env in the deploy script / .env: SABY_BACKEND_URL, SABY_ENGINE_TOKEN.
+
+services:
+  saby-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUNDLE: linux-x64
+    container_name: saby-agent
+    image: saby-agent:production
+    ports:
+      - "127.0.0.1:3456:3456"
+    environment:
+      NODE_ENV: production
+      SABY_CONFIG_DIR: /saby/config
+      SABY_BACKEND_URL: ${SABY_BACKEND_URL:-https://api.saby.ai}
+      OPENCODE_SERVER_PASSWORD: ${SABY_ENGINE_TOKEN:-saby-engine-token-change-me}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u \"opencode:$$OPENCODE_SERVER_PASSWORD\" http://127.0.0.1:3456/global/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      edge:
+        aliases:
+          - saby-agent
+
+networks:
+  edge:
+    external: true
+    name: saby-prod_edge

@@ -247,6 +247,29 @@ describe("ToolRegistry", () => {
     }),
   )
 
+  it.effect("passes session metadata to the canonical handler", () =>
+    Effect.gen(function* () {
+      const service = yield* ToolRegistry.Service
+      const metadata = { tenantId: "tenant_1", role: "admin" }
+      const contexts: Tool.Context[] = []
+      yield* service.register({
+        context: Tool.make({
+          description: "Context",
+          input: Schema.Struct({}),
+          output: Schema.Struct({ ok: Schema.Boolean }),
+          execute: (_, context) => Effect.sync(() => contexts.push(context)).pipe(Effect.as({ ok: true })),
+        }),
+      })
+      yield* settleTool(service, {
+        sessionID,
+        ...identity,
+        metadata,
+        call: { type: "tool-call", id: "call-context-metadata", name: "context", input: {} },
+      })
+      expect(contexts[0]?.metadata).toEqual(metadata)
+    }),
+  )
+
   it.effect("encodes output and applies generic settlement bounding", () =>
     Effect.gen(function* () {
       bounds.length = 0

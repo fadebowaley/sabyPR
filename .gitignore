@@ -32,3 +32,6 @@ UPCOMING_CHANGELOG.md
 logs/
 *.bun-build
 tsconfig.tsbuildinfo
+
+# Engine binaries (too large for git)
+deploy/saby-agent/linux-x64/bin/

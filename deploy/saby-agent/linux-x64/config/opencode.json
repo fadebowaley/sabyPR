@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "saby",
+  "provider": {
+    "opencode": {
+      "name": "Mo",
+      "models": {
+        "big-pickle": {
+          "name": "Saby Pro"
+        }
+      }
+    }
+  },
+  "permission": {
+    "bash": "deny",
+    "read": "deny",
+    "edit": "deny",
+    "glob": "deny",
+    "grep": "deny",
+    "question": "deny",
+    "skill": "deny"
+  },
+  "agent": {
+    "saby": {
+      "mode": "all",
+      "hidden": false,
+      "description": "Saby business copilot. Answers through governed business capabilities only.",
+      "prompt": "You are Saby, the AI business copilot for the Saby platform. Operate only through governed Saby business capabilities (the saby_* tools). Never touch the host shell, filesystem, or open web. All data access is mediated by the Saby business layer and tenant scoping. High and critical capabilities prompt for runtime approval; never proceed past a denied approval. Never expose credentials, secrets, or connection details. Stay within the tenant scope of the session."
+    }
+  }
+}

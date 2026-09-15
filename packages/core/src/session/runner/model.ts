@@ -3,6 +3,7 @@ export * as SessionRunnerModel from "./model"
 import { makeLocationNode } from "../../effect/app-node"
 import { type Model } from "@opencode-ai/llm"
 import * as AnthropicMessages from "@opencode-ai/llm/protocols/anthropic-messages"
+import * as Gemini from "@opencode-ai/llm/protocols/gemini"
 import * as OpenAICompatibleChat from "@opencode-ai/llm/protocols/openai-compatible-chat"
 import * as OpenAIResponses from "@opencode-ai/llm/protocols/openai-responses"
 import { Auth, type AnyRoute } from "@opencode-ai/llm/route"
@@ -153,6 +154,13 @@ export const fromCatalogModel = (
         .model({ id: resolved.api.id }),
     )
   }
+  if (resolved.api.type === "aisdk" && resolved.api.package === "@ai-sdk/google") {
+    return Effect.succeed(
+      withDefaults(resolved, Gemini.route)
+        .with({ auth: key === undefined ? Auth.none : Auth.header("x-goog-api-key", key) })
+        .model({ id: resolved.api.id }),
+    )
+  }
   if (resolved.api.type === "aisdk" && resolved.api.package === "@ai-sdk/openai-compatible" && resolved.api.url) {
     return Effect.succeed(
       withDefaults(resolved, OpenAICompatibleChat.route)
@@ -176,7 +184,32 @@ export const supported = (model: ModelV2.Info) =>
   model.api.type === "aisdk" &&
   (model.api.package === "@ai-sdk/openai" ||
     model.api.package === "@ai-sdk/anthropic" ||
+    model.api.package === "@ai-sdk/google" ||
     (model.api.package === "@ai-sdk/openai-compatible" && model.api.url !== undefined))
+
+/** Maps the Saby BYOK provider labels to the catalog provider IDs. */
+export const byokProviderID = (raw: string) => {
+  if (raw === "claude") return "anthropic"
+  if (raw === "gemini") return "google"
+  return raw
+}
+
+/** Reads a session's BYOK metadata (user-supplied provider key + model). */
+export const byokInput = (session: SessionSchema.Info) => {
+  const byok = session.metadata?.byok
+  if (!byok || typeof byok !== "object") return undefined
+  const record = byok as Record<string, unknown>
+  const apiKey = record.apiKey
+  const provider = record.provider
+  const model = record.model
+  if (typeof apiKey !== "string" || apiKey.length === 0) return undefined
+  if (typeof provider !== "string" || provider.length === 0) return undefined
+  return {
+    apiKey,
+    providerID: byokProviderID(provider),
+    modelID: typeof model === "string" && model.length > 0 ? model : undefined,
+  }
+}
 
 /** Resolves models from the catalog belonging to the current Location runtime. */
 export const locationLayer = Layer.effect(
@@ -186,6 +219,22 @@ export const locationLayer = Layer.effect(
     const integrations = yield* Integration.Service
     return Service.of({
       resolve: Effect.fn("SessionRunnerModel.resolve")(function* (session) {
+        // BYOK: a session carrying a user-supplied provider key resolves that
+        // provider's model directly (bypassing catalog availability) and binds
+        // the user's key as the model credential.
+        const byok = byokInput(session)
+        if (byok) {
+          const byokProvider = ProviderV2.ID.make(byok.providerID)
+          const selected = byok.modelID
+            ? yield* catalog.model.get(byokProvider, ModelV2.ID.make(byok.modelID))
+            : (yield* catalog.model.all())
+                .filter((model) => model.providerID === byokProvider && model.enabled && supported(model))
+                .sort((a, b) => b.time.released - a.time.released)[0]
+          if (selected && supported(selected)) {
+            return yield* resolve(session, selected, { type: "key", key: byok.apiKey })
+          }
+        }
+
         // Location plugins populate and filter the catalog asynchronously during layer startup.
         const defaultModel = session.model ? undefined : yield* catalog.model.default()
         const selected = session.model

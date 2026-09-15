@@ -903,6 +903,68 @@ describe("session.llm.stream", () => {
   )
 
   it.instance(
+    "honors authOverride.apiKey as Authorization header when provided",
+    () =>
+      Effect.gen(function* () {
+        const fixture = loadFixture(vivgridFixture.providerID, vivgridFixture.modelID)
+        const request = waitRequest(
+          "/chat/completions",
+          new Response(createChatStream("Hi"), {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream" },
+          }),
+        )
+
+        const resolved = yield* Provider.use.getModel(
+          ProviderV2.ID.make(vivgridFixture.providerID),
+          ModelV2.ID.make(fixture.model.id),
+        )
+        const sessionID = SessionID.make("session-byok-1")
+        const agent = {
+          name: "test",
+          mode: "primary",
+          options: {},
+          permission: [{ permission: "*", pattern: "*", action: "allow" }],
+          temperature: 0,
+          topP: 1,
+        } satisfies Agent.Info
+
+        const user = {
+          id: MessageID.make("msg_byok-1"),
+          sessionID,
+          role: "user",
+          time: { created: Date.now() },
+          agent: agent.name,
+          model: { providerID: ProviderV2.ID.make(vivgridFixture.providerID), modelID: resolved.id, variant: "high" },
+        } satisfies SessionV1.User
+
+        yield* drain({
+          user,
+          sessionID,
+          model: resolved,
+          agent,
+          system: ["System"],
+          messages: [{ role: "user", content: "Hey" }],
+          tools: {},
+          authOverride: { apiKey: "byok-override-key" },
+        })
+
+        const capture = yield* Effect.promise(() => request)
+        expect(capture.headers.get("Authorization")).toBe("Bearer byok-override-key")
+      }),
+    {
+      config: () => ({
+        enabled_providers: [vivgridFixture.providerID],
+        provider: {
+          [vivgridFixture.providerID]: {
+            options: { apiKey: "test-key", baseURL: `${state.server!.url.origin}/v1` },
+          },
+        },
+      }),
+    },
+  )
+
+  it.instance(
     "surfaces network_error finish reasons as retryable stream failures",
     () =>
       Effect.gen(function* () {

@@ -7,3 +7,6 @@ export type ID = typeof ID.Type
 
 export const Info = Session.Info
 export type Info = Session.Info
+
+export const Metadata = Session.SessionMetadata
+export type Metadata = typeof Metadata.Type

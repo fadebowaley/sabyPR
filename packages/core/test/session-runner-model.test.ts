@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { LLM } from "@opencode-ai/llm"
 import { LLMClient } from "@opencode-ai/llm/route"
 import { DateTime, Effect } from "effect"
@@ -9,6 +9,7 @@ import { ModelV2 } from "@opencode-ai/core/model"
 import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ProjectV2 } from "@opencode-ai/core/project"
 import { SessionRunnerModel } from "@opencode-ai/core/session/runner/model"
+import { byokInput, byokProviderID } from "@opencode-ai/core/session/runner/model"
 import { SessionV2 } from "@opencode-ai/core/session"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { it } from "./lib/effect"
@@ -316,16 +317,16 @@ describe("SessionRunnerModel", () => {
   it.effect("rejects catalog APIs without a native route", () =>
     Effect.gen(function* () {
       const failure = yield* SessionRunnerModel.fromCatalogModel(
-        model({ type: "aisdk", package: "@ai-sdk/google", url: "https://google.example/v1" }),
+        model({ type: "aisdk", package: "@ai-sdk/cohere", url: "https://cohere.example/v1" }),
       ).pipe(Effect.flip)
 
       expect(failure).toMatchObject({
         _tag: "SessionRunnerModel.UnsupportedApiError",
         providerID: "test-provider",
         modelID: "test-model",
-        api: "aisdk:@ai-sdk/google",
+        api: "aisdk:@ai-sdk/cohere",
       })
-      expect(failure.message).toBe("Unsupported API for test-provider/test-model: aisdk:@ai-sdk/google")
+      expect(failure.message).toBe("Unsupported API for test-provider/test-model: aisdk:@ai-sdk/cohere")
     }),
   )
 
@@ -340,8 +341,78 @@ describe("SessionRunnerModel", () => {
         SessionRunnerModel.supported(
           model({ type: "aisdk", package: "@ai-sdk/google", url: "https://google.example/v1" }),
         ),
-      ).toBe(false)
+      ).toBe(true)
       expect(SessionRunnerModel.supported(model({ type: "native", settings: {} }))).toBe(false)
     }),
   )
+
+  it.effect("maps Google catalog models into native Gemini routes with x-goog-api-key auth", () =>
+    Effect.gen(function* () {
+      const resolved = yield* SessionRunnerModel.fromCatalogModel(
+        model({ type: "aisdk", package: "@ai-sdk/google", url: "https://google.example/v1beta" }),
+      )
+      const request = LLM.request({ model: resolved, prompt: "Hello" })
+      const headers = yield* resolved.route.auth.apply({
+        request,
+        method: "POST",
+        url: "https://google.example/v1beta/models/test-model:streamGenerateContent",
+        body: "{}",
+        headers: Headers.empty,
+      })
+
+      expect(headers["x-goog-api-key"]).toBe("secret")
+    }),
+  )
+
+  test("maps Saby BYOK provider labels to catalog provider IDs", () => {
+    expect(byokProviderID("openai")).toBe("openai")
+    expect(byokProviderID("deepseek")).toBe("deepseek")
+    expect(byokProviderID("claude")).toBe("anthropic")
+    expect(byokProviderID("gemini")).toBe("google")
+  })
+
+  test("extracts BYOK key/provider/model from session metadata", () => {
+    const session = SessionV2.Info.make({
+      id: SessionV2.ID.make("ses_byok_key"),
+      projectID: ProjectV2.ID.global,
+      title: "test",
+      cost: 0,
+      tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+      time: { created: DateTime.makeUnsafe(0), updated: DateTime.makeUnsafe(0) },
+      location: { directory: AbsolutePath.make("/project") },
+      metadata: { byok: { apiKey: "sk-user-123", provider: "claude", model: "claude-sonnet-4-5" } },
+    })
+
+    expect(byokInput(session)).toEqual({
+      apiKey: "sk-user-123",
+      providerID: "anthropic",
+      modelID: "claude-sonnet-4-5",
+    })
+  })
+
+  test("returns no BYOK input when metadata is absent or incomplete", () => {
+    const plain = SessionV2.Info.make({
+      id: SessionV2.ID.make("ses_plain"),
+      projectID: ProjectV2.ID.global,
+      title: "test",
+      cost: 0,
+      tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+      time: { created: DateTime.makeUnsafe(0), updated: DateTime.makeUnsafe(0) },
+      location: { directory: AbsolutePath.make("/project") },
+    })
+    const empty = SessionV2.Info.make({
+      ...plain,
+      id: SessionV2.ID.make("ses_empty_byok"),
+      metadata: { byok: { apiKey: "", provider: "openai" } },
+    })
+    const noProvider = SessionV2.Info.make({
+      ...plain,
+      id: SessionV2.ID.make("ses_no_provider"),
+      metadata: { byok: { apiKey: "sk-user-123" } },
+    })
+
+    expect(byokInput(plain)).toBeUndefined()
+    expect(byokInput(empty)).toBeUndefined()
+    expect(byokInput(noProvider)).toBeUndefined()
+  })
 })

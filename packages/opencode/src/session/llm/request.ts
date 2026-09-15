@@ -33,6 +33,7 @@ type PrepareInput = {
   readonly plugin: Plugin.Interface
   readonly flags: RuntimeFlags.Info
   readonly isWorkflow: boolean
+  readonly authOverride?: { apiKey?: string; baseURL?: string }
 }
 
 export type Prepared = {
@@ -201,6 +202,11 @@ export const prepare = Effect.fn("LLMRequestPrep.prepare")(function* (input: Pre
       ...(input.parentSessionID ? { "x-parent-session-id": input.parentSessionID } : {}),
       ...input.model.headers,
       ...headers,
+      // BYOK / per-session key override. Must come after plugin headers so the
+      // user-supplied key always wins. Disabled for native OAuth sessions.
+      ...(input.authOverride?.apiKey && !isOpenaiOauth
+        ? { Authorization: `Bearer ${input.authOverride.apiKey}` }
+        : {}),
     },
   }
 })

@@ -260,6 +260,7 @@ const layer = Layer.effect(
                   sessionID: session.id,
                   agent: agent.id,
                   assistantMessageID,
+                  metadata: session.metadata,
                   call: event,
                 }),
               ).pipe(

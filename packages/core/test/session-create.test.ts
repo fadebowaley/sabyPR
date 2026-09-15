@@ -190,6 +190,40 @@ describe("SessionV2.create", () => {
     }),
   )
 
+  it.effect("persists session metadata through create, projection, and get", () =>
+    Effect.gen(function* () {
+      const session = yield* SessionV2.Service
+      const { db } = yield* Database.Service
+      const created = yield* session.create({
+        id,
+        location,
+        metadata: { tenantId: "tenant_123", role: "admin" },
+      })
+
+      expect(created.metadata).toEqual({ tenantId: "tenant_123", role: "admin" })
+      expect(yield* session.get(id)).toMatchObject({ metadata: { tenantId: "tenant_123", role: "admin" } })
+
+      const row = yield* db
+        .select()
+        .from(SessionTable)
+        .where(eq(SessionTable.id, id))
+        .get()
+        .pipe(Effect.orDie)
+      expect(row?.metadata).toEqual({ tenantId: "tenant_123", role: "admin" })
+      expect(row?.metadata).not.toBeNull()
+    }),
+  )
+
+  it.effect("omits metadata when none is supplied", () =>
+    Effect.gen(function* () {
+      const session = yield* SessionV2.Service
+      const created = yield* session.create({ id, location })
+
+      expect(created.metadata).toBeUndefined()
+      expect((yield* session.get(id)).metadata).toBeUndefined()
+    }),
+  )
+
   it.effect("omits legacy creation rows from the V2 Session event stream", () =>
     Effect.gen(function* () {
       const session = yield* SessionV2.Service

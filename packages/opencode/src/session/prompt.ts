@@ -1283,6 +1283,10 @@ const layer = Layer.effect(
               tools,
               model,
               toolChoice: format.type === "json_schema" ? "required" : undefined,
+              // Per-session BYOK override — only present when the gateway set
+              // session.metadata.byok for the current request.  The CLI path
+              // never populates it, so default provider auth is unchanged.
+              authOverride: session.metadata?.byok ? { apiKey: session.metadata.byok.apiKey } : undefined,
             })
 
             if (structured !== undefined) {
