@@ -30,9 +30,11 @@ echo "==> creating GitHub release ${TAG} on ${RELEASE_REPO}"
 gh release create "${TAG}" \
   --repo "${RELEASE_REPO}" \
   --title "Saby agent ${TAG}" \
-  --notes "Install: https://github.com/${RELEASE_REPO}/releases/latest/download/install.sh" \
+  --notes "Install:\n\n  curl -fsSL https://github.com/${RELEASE_REPO}/releases/latest/download/install.sh | sh\n\nThen run \`saby setup\` to sign in with your Saby account." \
   "${OUT}/saby-agent-linux-x64.tar.gz" \
+  "${OUT}/saby-agent-linux-arm64.tar.gz" \
   "${OUT}/saby-agent-darwin-arm64.tar.gz" \
+  "${OUT}/saby-agent-darwin-x64.tar.gz" \
   "${OUT}/saby-agent-SHA256SUMS.txt" \
   "${REPO_ROOT}/scripts/bootstrap-install.sh#install.sh"
 

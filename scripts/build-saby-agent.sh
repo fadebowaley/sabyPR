@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Builds the portable Saby agent bundles (darwin-arm64 + linux-x64).
-# Outputs dist/saby-agent/<platform>/…, tarballs and checksums.
+# Builds the portable Saby agent bundles (darwin-arm64, darwin-x64,
+# linux-x64, linux-arm64). Outputs dist/saby-agent/<platform>/…, tarballs
+# and checksums for the GitHub release.
 #
 # Usage: scripts/build-saby-agent.sh   (from the repo root or anywhere)
 # Env:   OPENCODE_VERSION, SABY_VENDOR (version suffix shown in tarballs)
@@ -15,23 +16,30 @@ work="${OUT}/_staging"
 
 rm -rf "${OUT}"
 
-echo "==> building darwin-arm64 runtime (native)"
-${CMD} build -- --single --skip-embed-web-ui
-mkdir -p "${OUT}/darwin-arm64/bin"
-cp "${REPO_ROOT}/packages/opencode/dist/opencode-darwin-arm64/bin/opencode" "${OUT}/darwin-arm64/bin/opencode-saby"
+build_runtime() {
+  local platform="$1"
+  local os="$2"
+  local arch="$3"
+  if [[ "${os}" == "darwin" && "${arch}" == "arm64" ]]; then
+    echo "==> building ${platform} runtime (native)"
+    ${CMD} build -- --single --skip-embed-web-ui
+  else
+    echo "==> building ${platform} runtime (cross)"
+    ${CMD} build -- --single --os="${os}" --arch="${arch}" --skip-embed-web-ui
+  fi
+  mkdir -p "${OUT}/${platform}/bin"
+  cp "${REPO_ROOT}/packages/opencode/dist/opencode-${os}-${arch}/bin/opencode" "${OUT}/${platform}/bin/opencode-saby"
+}
 
-echo "==> building linux-x64 runtime (cross)"
-# build.ts installs cross native deps automatically when --skip-install is omitted
-${CMD} build -- --single --os=linux --arch=x64 --skip-embed-web-ui
-mkdir -p "${OUT}/linux-x64/bin"
-cp "${REPO_ROOT}/packages/opencode/dist/opencode-linux-x64/bin/opencode" "${OUT}/linux-x64/bin/opencode-saby"
+compile_launcher() {
+  local platform="$1"
+  local target="$2"
+  echo "==> compiling ${platform} launcher (bundled Bun, no runtime required)"
+  bun build --compile --target="${target}" --outfile "${OUT}/${platform}/bin/saby" "${REPO_ROOT}/packages/copilot-saby/cli/main.ts"
+}
 
-echo "==> compiling launchers (bundled Bun, no runtime required)"
-bun build --compile --target=bun-darwin-arm64 --outfile "${OUT}/darwin-arm64/bin/saby" "${REPO_ROOT}/packages/copilot-saby/cli/main.ts"
-bun build --compile --target=bun-linux-x64 --outfile "${OUT}/linux-x64/bin/saby" "${REPO_ROOT}/packages/copilot-saby/cli/main.ts"
-
-echo "==> copying config (shared contract, precompiling tool file for portability)"
-for platform in darwin-arm64 linux-x64; do
+copy_config() {
+  local platform="$1"
   mkdir -p "${OUT}/${platform}/config/.opencode/plugins" "${OUT}/${platform}/config/.opencode/tools"
   cp "${REPO_ROOT}/opencode.json"                  "${OUT}/${platform}/config/opencode.json"
   cp "${REPO_ROOT}/.opencode/opencode.jsonc"       "${OUT}/${platform}/config/.opencode/opencode.jsonc"
@@ -39,6 +47,23 @@ for platform in darwin-arm64 linux-x64; do
   # Precompile the tools file into a single self-contained JS (no repo-relative imports remain)
   bun build --target=bun --external "@opencode-ai/plugin" "${REPO_ROOT}/.opencode/tools/saby.ts" \
     --outfile "${OUT}/${platform}/config/.opencode/tools/saby.js" >/dev/null 2>&1
+}
+
+PLATFORMS=(
+  "darwin-arm64|bun-darwin-arm64"
+  "darwin-x64|bun-darwin-x64"
+  "linux-x64|bun-linux-x64"
+  "linux-arm64|bun-linux-arm64"
+)
+
+for entry in "${PLATFORMS[@]}"; do
+  platform="${entry%%|*}"
+  target="${entry##*|}"
+  os="${platform%%-*}"
+  arch="${platform##*-}"
+  build_runtime "${platform}" "${os}" "${arch}"
+  compile_launcher "${platform}" "${target}"
+  copy_config "${platform}"
 done
 
 echo "==> copying bundle support files"
@@ -48,7 +73,8 @@ for f in install.sh Dockerfile .env.example README.md; do
 done
 
 echo "==> packaging per-platform tarballs (stable names for the latest-release URL)"
-for platform in darwin-arm64 linux-x64; do
+for entry in "${PLATFORMS[@]}"; do
+  platform="${entry%%|*}"
   dir="${work}/${platform}"
   mkdir -p "${dir}"
   cp -R "${OUT}/${platform}/." "${dir}/"
