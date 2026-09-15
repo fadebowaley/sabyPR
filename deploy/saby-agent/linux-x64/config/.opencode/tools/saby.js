@@ -10322,7 +10322,7 @@ function mapPayload(capability, parameters) {
 }
 
 // .opencode/tools/saby.ts
-var BASE_URL = normalizeBackend(process.env.SABY_BACKEND_URL ?? "http://localhost:4000");
+var BASE_URL = normalizeBackend(process.env.SABY_BACKEND_URL ?? "https://api.saby.ai");
 function normalizeBackend(raw) {
   return raw.trim().replace(/\/+$/, "").replace(/\/v1$/i, "");
 }
