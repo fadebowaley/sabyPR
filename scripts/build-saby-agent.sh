@@ -67,7 +67,7 @@ for entry in "${PLATFORMS[@]}"; do
 done
 
 echo "==> copying bundle support files"
-for f in install.sh Dockerfile .env.example README.md; do
+for f in install.sh uninstall.sh Dockerfile .env.example README.md; do
   src="${REPO_ROOT}/packages/copilot-saby/deploy-saby-agent/${f}"
   [[ -f "${src}" ]] && cp "${src}" "${OUT}/${f}"
 done
@@ -78,7 +78,7 @@ for entry in "${PLATFORMS[@]}"; do
   dir="${work}/${platform}"
   mkdir -p "${dir}"
   cp -R "${OUT}/${platform}/." "${dir}/"
-  for f in install.sh Dockerfile .env.example README.md; do
+for f in install.sh uninstall.sh Dockerfile .env.example README.md; do
     [[ -f "${OUT}/${f}" ]] && cp "${OUT}/${f}" "${dir}/"
   done
   echo "${VERSION}" > "${dir}/VERSION"

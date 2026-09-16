@@ -29,11 +29,13 @@ echo "Installing Saby agent to ${INSTALL_ROOT} (globally available via ${BIN_DIR
 mkdir -p "${INSTALL_ROOT}" "${BIN_DIR}"
 
 cp -R "${BUNDLE_ROOT}/bin" "${BUNDLE_ROOT}/config" "${INSTALL_ROOT}/"
-chmod +x "${INSTALL_ROOT}/bin/saby" "${INSTALL_ROOT}/bin/opencode-saby"
+cp -f "${BUNDLE_ROOT}/uninstall.sh" "${INSTALL_ROOT}/uninstall.sh"
+chmod +x "${INSTALL_ROOT}/bin/saby" "${INSTALL_ROOT}/bin/opencode-saby" "${INSTALL_ROOT}/uninstall.sh"
 
-# Symlink into the user/system bin dir so both commands are on PATH.
+# Symlink into the user/system bin dir so all three commands are on PATH.
 ln -sf "${INSTALL_ROOT}/bin/saby" "${BIN_DIR}/saby"
 ln -sf "${INSTALL_ROOT}/bin/opencode-saby" "${BIN_DIR}/opencode-saby"
+ln -sf "${INSTALL_ROOT}/uninstall.sh" "${BIN_DIR}/saby-agent-uninstall"
 
 # ---- ensure the bin dir is on PATH ---------------------------------------
 if command -v saby >/dev/null 2>&1; then
@@ -56,9 +58,10 @@ fi
 
 echo
 echo "Installed."
-echo "  saby            ${BIN_DIR}/saby"
-echo "  opencode-saby   ${BIN_DIR}/opencode-saby"
-echo "  config          ${INSTALL_ROOT}/config"
+echo "  saby                 ${BIN_DIR}/saby"
+echo "  opencode-saby        ${BIN_DIR}/opencode-saby"
+echo "  saby-agent-uninstall ${BIN_DIR}/saby-agent-uninstall"
+echo "  config               ${INSTALL_ROOT}/config"
 echo
 echo "Next: run the interactive setup to sign in —"
 echo

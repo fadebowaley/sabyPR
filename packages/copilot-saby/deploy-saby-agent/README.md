@@ -8,7 +8,8 @@ saby-agent/
   bin/saby            compiled launcher (bundled Bun, ~60 MB)
   bin/opencode-saby   governed opencode runtime
   config/             agent config loaded at launch (opencode.json + .opencode/…)
-  install.sh          symlinks bin/saby into ~/.local/bin
+  install.sh          installs bin/saby + bin/opencode-saby to ~/.local/bin
+  uninstall.sh        removes the bundle, symlinks, and PATH entry
   Dockerfile          headless REST container (cloud)
   .env.example        environment reference
 ```
@@ -38,6 +39,21 @@ saby                # open the copilot
 `install.sh` needs no sudo (installs to `~/.local/bin`; uses `/usr/local` when
 run as root). `saby setup` is fully interactive — it guides two sign-ins and
 persists the backend URL so every session is ready.
+
+## Uninstall
+
+To remove the agent, the CLI symlinks, and the PATH entry it added:
+
+```sh
+saby-agent-uninstall
+```
+
+It leaves `~/.saby` (auth, env, logs) in place. Pass `--purge` to remove that
+too:
+
+```sh
+saby-agent-uninstall --purge
+```
 
 ## Commands
 
